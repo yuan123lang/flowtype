@@ -1,0 +1,100 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlowType - 闯关背词</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+
+  <main class="app-shell">
+    <section id="homeScreen" class="screen active">
+      <div class="glass home-card">
+        <h1>FlowType</h1>
+        <p class="sub">闯关背词，每通关一关，小树多一层叶子</p>
+
+        <div class="tree-wrap" aria-label="成长树">
+          <div class="tree-crown" id="treeLeaves"></div>
+          <div class="tree-trunk"></div>
+          <div class="tree-ground"></div>
+        </div>
+
+        <div class="home-stats">
+          <span id="levelInfo">关卡 0 / 0</span>
+          <span id="leafInfo">叶子 0</span>
+          <span id="mistakeInfo">错题 0</span>
+        </div>
+
+        <div class="home-actions">
+          <button id="startLevelBtn" type="button">开始下一关</button>
+          <button id="startReviewBtn" type="button">错题复习</button>
+          <button id="toggleSoundBtn" type="button">音效: 开</button>
+        </div>
+
+        <div class="mistake-box">
+          <p>错题本</p>
+          <ul id="mistakeList"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="screen">
+      <div class="glass game-card" id="typingCard">
+        <header class="game-header">
+          <button id="backHomeBtn" type="button" class="ghost-btn">返回首页</button>
+          <span id="modeBadge">闯关模式</span>
+        </header>
+
+        <div class="word-meta">
+          <p id="phonetic"></p>
+          <p id="meaning"></p>
+        </div>
+
+        <div id="wordDisplay" class="word-display"></div>
+        <p class="tip">提示：只展示长度，不直接展示单词拼写</p>
+
+        <div class="game-actions">
+          <button id="skipBtn" type="button" class="warn-btn">我不会，跳过并加入错题</button>
+        </div>
+
+        <footer class="status-row">
+          <span id="progress">0 / 0</span>
+          <span id="liveWpm">WPM 0</span>
+          <span id="liveAcc">Accuracy 100%</span>
+        </footer>
+
+        <section class="detail-panel" id="detailPanel" aria-hidden="true">
+          <h3>单词解析</h3>
+          <p class="detail-word-line">
+            <strong id="detailWord"></strong>
+            <button id="detailSpeakBtn" type="button" class="ghost-btn">发音 + 例句</button>
+          </p>
+          <p id="detailPhonetic"></p>
+          <p id="detailMeaning"></p>
+          <p id="detailUsage"></p>
+          <p id="detailExample"></p>
+          <button id="detailNextBtn" type="button">下一个单词</button>
+        </section>
+
+        <section class="result-panel" id="resultPanel" aria-hidden="true">
+          <h2 id="resultTitle">本关完成</h2>
+          <p id="resultText"></p>
+          <div class="result-actions">
+            <button id="nextActionBtn" type="button">下一步</button>
+            <button id="toHomeBtn" type="button" class="ghost-btn">回首页</button>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="./words.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
