@@ -1,388 +1,796 @@
-﻿const WORD_BANK = window.WORD_BANK || [];
-
-const LEVEL_SIZE = 8;
-const STORAGE_KEY = "flowtype_progress_v2";
-
-const EXTRA_INFO = {
-  hesitate: { usage: "hesitate to do sth; without hesitation", example: "In the interview, she did not hesitate to explain her research method clearly." },
-  allocate: { usage: "allocate A to B; allocate time/resources/funds", example: "The university decided to allocate more funds to language training this semester." },
-  interpret: { usage: "interpret sth as sth; interpret data/results", example: "Students must interpret the chart before choosing the best answer in the test." },
-  constrain: { usage: "constrain sb/sth to; be constrained by", example: "Limited class time may constrain students from practicing enough writing tasks." },
-  fluctuate: { usage: "fluctuate between A and B; prices/levels fluctuate", example: "The unemployment rate tended to fluctuate slightly over the ten-year period." },
-  deteriorate: { usage: "deteriorate rapidly/gradually; conditions deteriorate", example: "Without regular review, vocabulary retention may deteriorate within a few weeks." },
-  plausible: { usage: "a plausible explanation/argument/reason", example: "The author offers a plausible explanation for the decline in reading habits." },
-  coherent: { usage: "a coherent argument/account; remain coherent", example: "A high-scoring essay should present a coherent structure from start to finish." },
-  subtle: { usage: "a subtle difference/change/hint", example: "The passage draws a subtle distinction between habit and deliberate practice." },
-  inevitable: { usage: "it is inevitable that; seem inevitable", example: "Given the trend, it seems inevitable that online testing will become more common." },
-  compile: { usage: "compile data/list/report", example: "Researchers compiled the survey data before writing the final conclusion." },
-  retain: { usage: "retain information/memory/control", example: "Spaced repetition helps learners retain new words for a longer period." },
-  adjacent: { usage: "adjacent to; in adjacent areas", example: "The chart compares reading scores in two adjacent regions of the country." },
-  notion: { usage: "the notion of; challenge/support a notion", example: "The article challenges the notion that talent matters more than effort." },
-  comprise: { usage: "comprise A, B and C; be comprised of", example: "The final exam may comprise listening, reading, writing and translation sections." },
-  rigorous: { usage: "rigorous analysis/method/training", example: "The study followed a rigorous method to ensure reliable academic findings." },
-  transient: { usage: "transient effect/state/feeling", example: "The writer argues that motivation is often transient without clear goals." },
-  intrinsic: { usage: "intrinsic motivation/value/quality", example: "Intrinsic motivation usually leads to more stable long-term learning behavior." },
-  facilitate: { usage: "facilitate communication/learning/process", example: "Visual notes can facilitate comprehension in long academic passages." },
-  derive: { usage: "derive A from B; derive benefit/insight", example: "Students can derive the main idea from topic sentences in each paragraph." },
-  profound: { usage: "a profound impact/effect/change", example: "Regular feedback has a profound impact on writing performance in exams." },
-  deviate: { usage: "deviate from a plan/path/rule", example: "Candidates should not deviate from the task requirement in timed essays." },
-  convention: { usage: "by convention; social/cultural convention", example: "By convention, formal emails in English begin with a polite opening line." },
-  meticulous: { usage: "meticulous planning/record/attention", example: "Meticulous planning is essential for completing all sections within exam time." },
-  intact: { usage: "remain intact; keep sth intact", example: "The key message remained intact after the text was summarized by students." },
-  attribute: { usage: "attribute A to B; be attributed to", example: "The improvement was attributed to daily review and error-focused practice." },
-  perspective: { usage: "a perspective on; from a perspective", example: "The second paragraph presents a different perspective on bilingual education." },
-  subsequent: { usage: "subsequent to; in subsequent years", example: "Subsequent studies confirmed the trend reported in the original paper." },
-  empirical: { usage: "empirical evidence/research/data", example: "The claim is supported by empirical evidence collected from classroom tests." },
-  sustain: { usage: "sustain growth/progress/attention", example: "Short daily sessions are easier to sustain than irregular long study marathons." }
-};
-
-const words = WORD_BANK.map((w) => ({ ...w }));
-const wordsById = new Map(words.map((w) => [w.id, w]));
-const TOTAL_LEVELS = Math.max(1, Math.ceil(words.length / LEVEL_SIZE));
+﻿const TOKEN_KEY = "flowtype_auth_token_v1";
+const BOOK_KEY_STORE = "flowtype_selected_book_v1";
+const MAX_WORD_WEIGHT = 12;
+const REPEAT_COOLDOWN_TURNS = 2;
+const SKIP_WEIGHT_PENALTY = 3;
+const DEFAULT_AVATAR_DATA = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='60' fill='%23dbe7de'/%3E%3Ccircle cx='60' cy='46' r='22' fill='%2391a79a'/%3E%3Crect x='28' y='74' width='64' height='28' rx='14' fill='%2391a79a'/%3E%3C/svg%3E";
+const API_BASE = (() => {
+  const sameOriginHttp = /^https?:$/i.test(window.location.protocol);
+  if (sameOriginHttp && window.location.port === "5173") return "";
+  return "http://127.0.0.1:5173";
+})();
 
 const ui = {
+  authScreen: document.getElementById("authScreen"),
   homeScreen: document.getElementById("homeScreen"),
   gameScreen: document.getElementById("gameScreen"),
-  treeLeaves: document.getElementById("treeLeaves"),
-  levelInfo: document.getElementById("levelInfo"),
-  leafInfo: document.getElementById("leafInfo"),
-  mistakeInfo: document.getElementById("mistakeInfo"),
-  mistakeList: document.getElementById("mistakeList"),
-  startLevelBtn: document.getElementById("startLevelBtn"),
-  startReviewBtn: document.getElementById("startReviewBtn"),
-  toggleSoundBtn: document.getElementById("toggleSoundBtn"),
 
-  typingCard: document.getElementById("typingCard"),
+  showLoginBtn: document.getElementById("showLoginBtn"),
+  showRegisterBtn: document.getElementById("showRegisterBtn"),
+  loginForm: document.getElementById("loginForm"),
+  registerForm: document.getElementById("registerForm"),
+  loginUsername: document.getElementById("loginUsername"),
+  loginPassword: document.getElementById("loginPassword"),
+  registerUsername: document.getElementById("registerUsername"),
+  registerDisplayName: document.getElementById("registerDisplayName"),
+  registerPassword: document.getElementById("registerPassword"),
+  registerAvatar: document.getElementById("registerAvatar"),
+  avatarPreview: document.getElementById("avatarPreview"),
+  authMessage: document.getElementById("authMessage"),
+
+  userAvatar: document.getElementById("userAvatar"),
+  userName: document.getElementById("userName"),
+  todayDate: document.getElementById("todayDate"),
+  todayQuote: document.getElementById("todayQuote"),
+  openProfileBtn: document.getElementById("openProfileBtn"),
+  logoutBtn: document.getElementById("logoutBtn"),
+
+  profileModal: document.getElementById("profileModal"),
+  profileBackdrop: document.getElementById("profileBackdrop"),
+  closeProfileBtn: document.getElementById("closeProfileBtn"),
+  profileCancelBtn: document.getElementById("profileCancelBtn"),
+  profileSaveBtn: document.getElementById("profileSaveBtn"),
+  profileAvatarInput: document.getElementById("profileAvatarInput"),
+  profileAvatarPreview: document.getElementById("profileAvatarPreview"),
+  profileDisplayNameInput: document.getElementById("profileDisplayNameInput"),
+  profileMessage: document.getElementById("profileMessage"),
+  profileUsername: document.getElementById("profileUsername"),
+  profileCreatedAt: document.getElementById("profileCreatedAt"),
+  profileBookName: document.getElementById("profileBookName"),
+  profileTodayMinutes: document.getElementById("profileTodayMinutes"),
+  profileWeekMinutes: document.getElementById("profileWeekMinutes"),
+  profileMasteredDue: document.getElementById("profileMasteredDue"),
+  profileAiStatus: document.getElementById("profileAiStatus"),
+  profileApiEnabled: document.getElementById("profileApiEnabled"),
+  profileApiBaseUrlInput: document.getElementById("profileApiBaseUrlInput"),
+  profileApiModelInput: document.getElementById("profileApiModelInput"),
+  profileApiKeyInput: document.getElementById("profileApiKeyInput"),
+  profileApiSystemPromptInput: document.getElementById("profileApiSystemPromptInput"),
+
+  bookSelect: document.getElementById("bookSelect"),
+  startSmartBtn: document.getElementById("startSmartBtn"),
+  startHardestBtn: document.getElementById("startHardestBtn"),
+  checkinBtn: document.getElementById("checkinBtn"),
+  todayDuration: document.getElementById("todayDuration"),
+  weekDuration: document.getElementById("weekDuration"),
+  dueCount: document.getElementById("dueCount"),
+  checkinStatus: document.getElementById("checkinStatus"),
+
+  newCount: document.getElementById("newCount"),
+  learningCount: document.getElementById("learningCount"),
+  masteredCount: document.getElementById("masteredCount"),
+  lastReviewAt: document.getElementById("lastReviewAt"),
+
+  trendMinutes: document.getElementById("trendMinutes"),
+  trendAccuracy: document.getElementById("trendAccuracy"),
+  trendSkipRate: document.getElementById("trendSkipRate"),
+
+  mistakeBookFilter: document.getElementById("mistakeBookFilter"),
+  mistakeSortFilter: document.getElementById("mistakeSortFilter"),
+  refreshMistakesBtn: document.getElementById("refreshMistakesBtn"),
+  mistakeList: document.getElementById("mistakeList"),
+
   backHomeBtn: document.getElementById("backHomeBtn"),
   modeBadge: document.getElementById("modeBadge"),
-  phonetic: document.getElementById("phonetic"),
-  meaning: document.getElementById("meaning"),
-  wordDisplay: document.getElementById("wordDisplay"),
   progress: document.getElementById("progress"),
   liveWpm: document.getElementById("liveWpm"),
   liveAcc: document.getElementById("liveAcc"),
+  phonetic: document.getElementById("phonetic"),
+  meaning: document.getElementById("meaning"),
+  wordDisplay: document.getElementById("wordDisplay"),
   skipBtn: document.getElementById("skipBtn"),
+  endSessionBtn: document.getElementById("endSessionBtn"),
 
-  detailPanel: document.getElementById("detailPanel"),
-  detailWord: document.getElementById("detailWord"),
-  detailPhonetic: document.getElementById("detailPhonetic"),
-  detailMeaning: document.getElementById("detailMeaning"),
-  detailUsage: document.getElementById("detailUsage"),
-  detailExample: document.getElementById("detailExample"),
-  detailSpeakBtn: document.getElementById("detailSpeakBtn"),
-  detailNextBtn: document.getElementById("detailNextBtn"),
+  insightWord: document.getElementById("insightWord"),
+  insightPhonetic: document.getElementById("insightPhonetic"),
+  insightMeaning: document.getElementById("insightMeaning"),
+  insightUsage: document.getElementById("insightUsage"),
+  insightExample: document.getElementById("insightExample"),
+  insightMnemonic: document.getElementById("insightMnemonic"),
+  insightSpeakBtn: document.getElementById("insightSpeakBtn"),
 
   resultPanel: document.getElementById("resultPanel"),
   resultTitle: document.getElementById("resultTitle"),
   resultText: document.getElementById("resultText"),
-  nextActionBtn: document.getElementById("nextActionBtn"),
-  toHomeBtn: document.getElementById("toHomeBtn")
+  resultHomeBtn: document.getElementById("resultHomeBtn")
 };
 
 const state = {
-  profile: loadProfile(),
+  token: localStorage.getItem(TOKEN_KEY) || "",
+  user: null,
+  books: [],
+  selectedBookKey: localStorage.getItem(BOOK_KEY_STORE) || "",
+  summary: null,
+  progress: null,
+  mistakes: [],
+
   soundEnabled: true,
-  mode: "idle",
-  pool: [],
+  sessionMode: "",
   queue: [],
-  completedWords: 0,
-  skippedWords: 0,
+  pool: [],
   currentWord: null,
   charIndex: 0,
-  currentWordErrors: 0,
+  currentWrong: 0,
+  currentMissed: false,
   roundCorrectKeys: 0,
   roundWrongKeys: 0,
-  roundStart: Date.now(),
-  wordStart: Date.now(),
-  flashError: false,
+  roundStartMs: 0,
+  wordStartMs: 0,
+  completedWords: 0,
+  skippedWords: 0,
   gameFinished: false,
-  showingDetail: false,
-  speaking: false
+  isAdvancing: false,
+
+  insightWord: null,
+  insightReqId: 0,
+  speaking: false,
+  preferredVoice: null,
+
+  studyTimerStart: 0,
+  studyReportedSeconds: 0,
+  studyTicking: false,
+  studyIntervalId: null,
+
+  profileDraftAvatarData: "",
+  aiSettings: null
 };
 
 let audioCtx = null;
 let speechSynthesisRef = null;
-let preferredVoice = null;
-let voicesBound = false;
 
-function defaultProfile() {
-  return {
-    completedLevels: 0,
-    leaves: 0,
-    mistakes: {}
+function clamp(num, min, max) {
+  return Math.max(min, Math.min(max, Number(num)));
+}
+
+function formatDateText(dateText) {
+  if (!dateText) return "--";
+  const [y, m, d] = String(dateText).split("-");
+  if (!y || !m || !d) return String(dateText);
+  return `${y}年${m}月${d}日`;
+}
+
+function formatTimeText(seconds) {
+  const sec = Math.max(0, Number(seconds || 0));
+  const mins = Math.floor(sec / 60);
+  const hours = Math.floor(mins / 60);
+  const remain = mins % 60;
+  return hours > 0 ? `${hours}小时${remain}分钟` : `${mins}分钟`;
+}
+
+function showScreen(name) {
+  ui.authScreen.classList.toggle("active", name === "auth");
+  ui.homeScreen.classList.toggle("active", name === "home");
+  ui.gameScreen.classList.toggle("active", name === "game");
+}
+
+function setAuthMessage(text, isError = true) {
+  ui.authMessage.textContent = text || "";
+  ui.authMessage.style.color = isError ? "#b05b34" : "#1e7a4b";
+}
+
+function setProfileMessage(text, isError = true) {
+  if (!ui.profileMessage) return;
+  ui.profileMessage.textContent = text || "";
+  ui.profileMessage.style.color = isError ? "#b05b34" : "#1e7a4b";
+}
+
+function mapAuthError(errorCode, fallback = "") {
+  const map = {
+    invalid_username: "用户名不合法：仅支持 3-24 位英文/数字/下划线。",
+    password_too_short: "密码太短：至少 6 位。",
+    invalid_display_name: "显示名不合法：不能为空且不超过 32 字符。",
+    avatar_too_large: "头像过大，请换一张更小的图片。",
+    username_exists: "用户名已被占用，请更换用户名。",
+    invalid_credentials: "用户名或密码错误。",
+    session_expired: "登录已过期，请重新登录。",
+    unauthorized: "未登录或登录状态失效。",
+    payload_too_large: "上传内容过大，请换一张更小的头像图片。",
+    invalid_ai_settings: "AI 配置不合法，请检查地址、密钥和模型。",
+    invalid_ai_base_url: "AI 地址不合法：必须以 http:// 或 https:// 开头。",
+    "413": "上传内容过大，请换一张更小的头像图片。"
   };
+  return map[String(errorCode || "")] || fallback || "操作失败，请稍后重试。";
 }
 
-function loadProfile() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultProfile();
-    const parsed = JSON.parse(raw);
-    return {
-      completedLevels: Number(parsed.completedLevels || 0),
-      leaves: Number(parsed.leaves || 0),
-      mistakes: parsed.mistakes || {}
-    };
-  } catch {
-    return defaultProfile();
+function toReadableError(error) {
+  const raw = String(error?.message || "");
+  if (!raw) return "操作失败，请稍后重试。";
+  if (raw === "network_unreachable" || /failed to fetch/i.test(raw)) {
+    return "无法连接后端服务，请先在 G:\\Flowtype 执行 npm start。";
   }
+  return mapAuthError(raw, raw);
 }
 
-function saveProfile() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.profile));
+function normalizeUsername(raw) {
+  return String(raw || "")
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200D\uFEFF\s]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
-function switchScreen(screen) {
-  ui.homeScreen.classList.toggle("active", screen === "home");
-  ui.gameScreen.classList.toggle("active", screen === "game");
-}
-
-function uniqueMistakeCount() {
-  return Object.keys(state.profile.mistakes).length;
-}
-
-function totalMistakeCount() {
-  return Object.values(state.profile.mistakes).reduce((a, b) => a + Number(b || 0), 0);
-}
-
-function renderTree() {
-  const count = Math.max(0, state.profile.leaves);
-  ui.treeLeaves.innerHTML = "";
-
-  for (let i = 0; i < count; i += 1) {
-    const leaf = document.createElement("span");
-    leaf.className = "leaf";
-    const x = ((i * 37) % 180) + 12;
-    const y = ((i * 53) % 100) + 8;
-    const r = ((i * 19) % 70) - 35;
-    leaf.style.left = `${x}px`;
-    leaf.style.top = `${y}px`;
-    leaf.style.transform = `rotate(${r}deg)`;
-    ui.treeLeaves.appendChild(leaf);
+function validateUsername(raw) {
+  const username = normalizeUsername(raw);
+  if (!username) return { ok: false, message: "用户名不能为空。" };
+  if (username.length < 3 || username.length > 24) {
+    return { ok: false, message: "用户名长度需为 3-24 位。" };
   }
+  if (!/^[a-z0-9_]+$/.test(username)) {
+    const bad = [...username].find((ch) => !/[a-z0-9_]/.test(ch));
+    if (bad) {
+      const code = `U+${bad.codePointAt(0).toString(16).toUpperCase()}`;
+      const badLabel = /\s/.test(bad) ? "空白字符" : bad;
+      return {
+        ok: false,
+        message: `用户名包含非法字符 "${badLabel}" (${code})，仅支持英文/数字/下划线。`
+      };
+    }
+    return { ok: false, message: "用户名包含非法字符（仅支持英文/数字/下划线）。" };
+  }
+  return { ok: true, username };
 }
 
-function renderMistakeList() {
-  const entries = Object.entries(state.profile.mistakes)
-    .map(([id, n]) => ({ word: wordsById.get(id), count: Number(n || 0) }))
-    .filter((e) => e.word)
-    .sort((a, b) => b.count - a.count);
-
-  ui.mistakeList.innerHTML = "";
-  if (!entries.length) {
-    const li = document.createElement("li");
-    li.textContent = "当前无错题";
-    ui.mistakeList.appendChild(li);
-    return;
-  }
-
-  entries.forEach((item) => {
-    const li = document.createElement("li");
-    li.textContent = `${item.word.word} (${item.word.meaning}) x${item.count}`;
-    ui.mistakeList.appendChild(li);
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("read_file_failed"));
+    reader.readAsDataURL(file);
   });
 }
 
-function renderHome() {
-  ui.levelInfo.textContent = `关卡 ${Math.min(state.profile.completedLevels, TOTAL_LEVELS)} / ${TOTAL_LEVELS}`;
-  ui.leafInfo.textContent = `叶子 ${state.profile.leaves}`;
-  ui.mistakeInfo.textContent = `错题 ${totalMistakeCount()}`;
-  ui.startReviewBtn.disabled = uniqueMistakeCount() === 0;
-  ui.startLevelBtn.disabled = state.profile.completedLevels >= TOTAL_LEVELS;
-  renderTree();
-  renderMistakeList();
+function loadImageFromDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("image_decode_failed"));
+    img.src = dataUrl;
+  });
 }
 
-function applyTimeTheme() {
-  const hour = new Date().getHours();
-  const root = document.documentElement;
-  if (hour >= 6 && hour < 17) {
-    root.style.setProperty("--bg-a", "#eef9ff");
-    root.style.setProperty("--bg-b", "#e8edf9");
-  } else if (hour >= 17 && hour < 20) {
-    root.style.setProperty("--bg-a", "#fff7ed");
-    root.style.setProperty("--bg-b", "#fee2e2");
-  } else {
-    root.style.setProperty("--bg-a", "#e0f2fe");
-    root.style.setProperty("--bg-b", "#dbeafe");
+async function compressAvatarToDataUrl(file) {
+  const raw = await readFileAsDataURL(file);
+  const img = await loadImageFromDataUrl(raw);
+  const maxSide = 320;
+  const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+  const targetW = Math.max(1, Math.round(img.width * scale));
+  const targetH = Math.max(1, Math.round(img.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, targetW, targetH);
+
+  return canvas.toDataURL("image/jpeg", 0.82);
+}
+
+function authHeaders(extra = {}) {
+  const headers = { "Content-Type": "application/json", ...extra };
+  if (state.token) headers.Authorization = `Bearer ${state.token}`;
+  return headers;
+}
+
+async function request(url, options = {}) {
+  const { headers: customHeaders = {}, ...restOptions } = options;
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${url}`, {
+      ...restOptions,
+      headers: authHeaders(customHeaders)
+    });
+  } catch {
+    throw new Error("network_unreachable");
   }
+
+  if (res.status === 401) {
+    logoutLocal();
+    throw new Error("登录已失效，请重新登录。");
+  }
+  if (!res.ok) {
+    let message = `${res.status}`;
+    try {
+      const data = await res.json();
+      message = data.error || data.message || message;
+    } catch {
+      message = `${res.status}`;
+    }
+    throw new Error(message);
+  }
+  return res.json();
+}
+
+function logoutLocal() {
+  state.token = "";
+  state.user = null;
+  state.profileDraftAvatarData = "";
+  localStorage.removeItem(TOKEN_KEY);
+  stopStudyTicker();
+  closeProfileModal();
+  showScreen("auth");
+}
+
+function saveToken(token) {
+  state.token = token;
+  localStorage.setItem(TOKEN_KEY, token);
 }
 
 function ensureAudioContext() {
-  if (!audioCtx) {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (AC) audioCtx = new AC();
-  }
+  if (audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (AC) audioCtx = new AC();
 }
 
-function playTone(freq, duration = 0.07, type = "sine", gainValue = 0.04) {
+function playTone(freq, duration = 0.06, type = "triangle", gainValue = 0.03) {
   if (!state.soundEnabled) return;
   ensureAudioContext();
   if (!audioCtx) return;
-
   const now = audioCtx.currentTime;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
-
   osc.type = type;
   osc.frequency.setValueAtTime(freq, now);
-
   gain.gain.setValueAtTime(gainValue, now);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
   osc.connect(gain);
   gain.connect(audioCtx.destination);
-
   osc.start(now);
   osc.stop(now + duration);
-}
-
-function playCorrectSound() {
-  playTone(760, 0.05, "triangle", 0.03);
-}
-
-function playWrongSound() {
-  playTone(180, 0.09, "sawtooth", 0.05);
-}
-
-function playLevelUpSound() {
-  playTone(520, 0.08, "sine", 0.04);
-  setTimeout(() => playTone(760, 0.1, "sine", 0.04), 80);
-}
-
-function getWordExtra(wordObj) {
-  return EXTRA_INFO[wordObj.word] || {
-    usage: `常见用法: ${wordObj.word} + 常见搭配（结合上下文记忆）`,
-    example: `The passage uses ${wordObj.word} in an academic context.`
-  };
 }
 
 function scoreVoice(voice) {
   const name = `${voice.name} ${voice.lang}`.toLowerCase();
   let score = 0;
-
-  if (name.includes("en-us")) score += 6;
-  if (name.includes("en-gb")) score += 4;
+  if (name.includes("en-us")) score += 5;
   if (name.includes("english")) score += 3;
-  if (name.includes("natural") || name.includes("neural") || name.includes("enhanced")) score += 8;
-  if (name.includes("microsoft") || name.includes("google") || name.includes("samantha")) score += 4;
+  if (name.includes("natural") || name.includes("neural")) score += 5;
   if (voice.default) score += 2;
-
   return score;
 }
 
-function syncPreferredVoice() {
-  if (!speechSynthesisRef) return;
-
-  const voices = speechSynthesisRef.getVoices().filter((voice) => {
-    const lang = (voice.lang || "").toLowerCase();
-    const name = (voice.name || "").toLowerCase();
-    return lang.startsWith("en") || name.includes("english");
-  });
-
-  preferredVoice = voices.sort((a, b) => scoreVoice(b) - scoreVoice(a))[0] || null;
-  updateSpeechButton();
-}
-
 function initSpeech() {
-  if (!("speechSynthesis" in window)) {
-    updateSpeechButton();
-    return;
-  }
-
+  if (!("speechSynthesis" in window)) return;
   speechSynthesisRef = window.speechSynthesis;
-  syncPreferredVoice();
-
-  if (voicesBound) return;
-  voicesBound = true;
-
-  if (typeof speechSynthesisRef.addEventListener === "function") {
-    speechSynthesisRef.addEventListener("voiceschanged", syncPreferredVoice);
-  } else {
-    speechSynthesisRef.onvoiceschanged = syncPreferredVoice;
-  }
-}
-
-function updateSpeechButton() {
-  if (!ui.detailSpeakBtn) return;
-
-  if (!speechSynthesisRef) {
-    ui.detailSpeakBtn.disabled = true;
-    ui.detailSpeakBtn.textContent = "无发音";
-    return;
-  }
-
-  ui.detailSpeakBtn.disabled = state.speaking;
-  ui.detailSpeakBtn.textContent = state.speaking ? "播放中..." : "发音 + 例句";
-}
-
-function stopSpeech() {
-  if (!speechSynthesisRef) return;
-  speechSynthesisRef.cancel();
-  state.speaking = false;
-  updateSpeechButton();
+  const sync = () => {
+    const voices = speechSynthesisRef.getVoices().filter((voice) => {
+      const name = `${voice.name} ${voice.lang}`.toLowerCase();
+      return name.includes("english") || String(voice.lang || "").toLowerCase().startsWith("en");
+    });
+    state.preferredVoice = voices.sort((a, b) => scoreVoice(b) - scoreVoice(a))[0] || null;
+  };
+  sync();
+  speechSynthesisRef.addEventListener("voiceschanged", sync);
 }
 
 function createUtterance(text, options = {}) {
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = options.lang || preferredVoice?.lang || "en-US";
-  utterance.rate = options.rate ?? 0.86;
-  utterance.pitch = options.pitch ?? 1;
-  utterance.volume = options.volume ?? 1;
-
-  if (preferredVoice) {
-    utterance.voice = preferredVoice;
-  }
-
-  return utterance;
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = options.lang || state.preferredVoice?.lang || "en-US";
+  utter.rate = options.rate ?? 0.88;
+  utter.pitch = options.pitch ?? 1;
+  if (state.preferredVoice) utter.voice = state.preferredVoice;
+  return utter;
 }
 
 function speakWord(word, example = "") {
-  initSpeech();
-  if (!speechSynthesisRef) return;
-
-  stopSpeech();
+  if (!speechSynthesisRef || !word) return;
+  speechSynthesisRef.cancel();
   state.speaking = true;
-  updateSpeechButton();
+  ui.insightSpeakBtn.disabled = true;
 
   const queue = [
-    createUtterance(word, { rate: 0.8, pitch: 0.96 }),
-    createUtterance(word, { rate: 0.66, pitch: 1.02 })
+    createUtterance(word, { rate: 0.8, pitch: 0.95 }),
+    createUtterance(word, { rate: 0.65, pitch: 1.02 })
   ];
+  if (example) queue.push(createUtterance(example, { rate: 0.9 }));
 
-  if (example) {
-    queue.push(createUtterance(example, { rate: 0.88, pitch: 1 }));
-  }
-
-  let index = 0;
-
-  const playNext = () => {
-    if (index >= queue.length) {
+  let idx = 0;
+  const next = () => {
+    if (idx >= queue.length) {
       state.speaking = false;
-      updateSpeechButton();
+      ui.insightSpeakBtn.disabled = !state.insightWord;
       return;
     }
-
-    const utterance = queue[index];
-    index += 1;
-
-    utterance.onend = () => {
-      window.setTimeout(playNext, index === 1 ? 120 : 180);
-    };
-
-    utterance.onerror = () => {
+    const utter = queue[idx];
+    idx += 1;
+    utter.onend = () => setTimeout(next, 120);
+    utter.onerror = () => {
       state.speaking = false;
-      updateSpeechButton();
+      ui.insightSpeakBtn.disabled = !state.insightWord;
     };
-
-    speechSynthesisRef.speak(utterance);
+    speechSynthesisRef.speak(utter);
   };
+  next();
+}
 
-  playNext();
+function renderBooks() {
+  ui.bookSelect.innerHTML = "";
+  ui.mistakeBookFilter.innerHTML = `<option value="all">全部</option>`;
+
+  state.books.forEach((book) => {
+    const opt = document.createElement("option");
+    opt.value = book.bookKey;
+    opt.textContent = book.name;
+    opt.selected = book.bookKey === state.selectedBookKey;
+    ui.bookSelect.appendChild(opt);
+
+    const mOpt = document.createElement("option");
+    mOpt.value = book.bookKey;
+    mOpt.textContent = book.name;
+    ui.mistakeBookFilter.appendChild(mOpt);
+  });
+  renderProfileSummary();
+}
+
+function renderSparkline(el, points, formatter, invert = false) {
+  el.innerHTML = "";
+  const safePoints = points.length ? points : Array.from({ length: 7 }).map(() => ({ date: "--/--", value: 0 }));
+  const max = Math.max(...safePoints.map((item) => Number(item.value || 0)), 1);
+
+  safePoints.forEach((item) => {
+    const col = document.createElement("div");
+    col.className = "bar-col";
+    const bar = document.createElement("i");
+    const raw = Number(item.value || 0);
+    const percent = clamp(raw / max, 0.08, 1);
+    bar.style.height = `${Math.round(percent * 58 + 10)}px`;
+    if (invert) {
+      const green = Math.round((1 - raw) * 100);
+      bar.style.background = `linear-gradient(180deg, hsl(${green} 46% 56%), hsl(${green} 50% 36%))`;
+    }
+    const label = document.createElement("b");
+    label.textContent = formatter(raw);
+    col.title = `${item.date} ${label.textContent}`;
+    col.appendChild(bar);
+    col.appendChild(label);
+    el.appendChild(col);
+  });
+}
+
+function renderSummary() {
+  if (!state.summary) return;
+  ui.todayDate.textContent = formatDateText(state.summary.today);
+  ui.todayQuote.textContent = state.summary.quote || "保持节奏。";
+  ui.todayDuration.textContent = formatTimeText(state.summary.todaySeconds || 0);
+  const week = Array.isArray(state.summary.week) ? state.summary.week : [];
+  const weekTotal = week.reduce((sum, day) => sum + Number(day.seconds || 0), 0);
+  ui.weekDuration.textContent = formatTimeText(weekTotal);
+  ui.checkinStatus.textContent = state.summary.checkedIn ? "已打卡" : "未打卡";
+  ui.checkinBtn.disabled = Boolean(state.summary.checkedIn);
+  ui.checkinBtn.textContent = state.summary.checkedIn ? "今日已打卡" : "今日打卡";
+
+  const minutePoints = week.map((day) => ({
+    date: String(day.date || "").slice(5).replace("-", "/"),
+    value: Math.round(Number(day.seconds || 0) / 60)
+  }));
+  const accPoints = week.map((day) => ({
+    date: String(day.date || "").slice(5).replace("-", "/"),
+    value: Math.round(Number(day.accuracy || 0) * 100)
+  }));
+  const skipPoints = week.map((day) => ({
+    date: String(day.date || "").slice(5).replace("-", "/"),
+    value: Math.round(Number(day.skipRate || 0) * 100)
+  }));
+
+  renderSparkline(ui.trendMinutes, minutePoints, (v) => `${v}m`);
+  renderSparkline(ui.trendAccuracy, accPoints, (v) => `${v}%`);
+  renderSparkline(ui.trendSkipRate, skipPoints, (v) => `${v}%`, true);
+  renderProfileSummary();
+}
+
+function renderProgress() {
+  if (!state.progress) return;
+  ui.newCount.textContent = String(state.progress.newCount || 0);
+  ui.learningCount.textContent = String(state.progress.learningCount || 0);
+  ui.masteredCount.textContent = String(state.progress.masteredCount || 0);
+  ui.dueCount.textContent = String(state.progress.dueCount || 0);
+  ui.lastReviewAt.textContent = state.progress.lastReviewedAt
+    ? formatDateText(String(state.progress.lastReviewedAt).slice(0, 10))
+    : "-";
+  renderProfileSummary();
+}
+
+function renderMistakes() {
+  ui.mistakeList.innerHTML = "";
+  if (!state.mistakes.length) {
+    const li = document.createElement("li");
+    li.textContent = "当前没有错题。";
+    ui.mistakeList.appendChild(li);
+    return;
+  }
+
+  state.mistakes.forEach((item) => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <p class="mistake-word-line">
+        <span>${item.word}</span>
+        <span>难度 ${item.score}</span>
+      </p>
+      <p class="mistake-meta">${item.bookName} · 错误 ${item.wrongCount} · 跳过 ${item.skipCount}</p>
+      <p class="mistake-meta">${item.meaning}</p>
+    `;
+    ui.mistakeList.appendChild(li);
+  });
+}
+
+async function loadBooks() {
+  const data = await request("/api/books");
+  state.books = Array.isArray(data.books) ? data.books : [];
+  if (!state.books.length) throw new Error("没有可用词书");
+  const exists = state.books.some((book) => book.bookKey === state.selectedBookKey);
+  state.selectedBookKey = exists ? state.selectedBookKey : state.books[0].bookKey;
+  localStorage.setItem(BOOK_KEY_STORE, state.selectedBookKey);
+}
+
+async function loadSummary() {
+  state.summary = await request("/api/stats/summary");
+}
+
+async function loadProgress() {
+  state.progress = await request(`/api/books/${encodeURIComponent(state.selectedBookKey)}/progress`);
+}
+
+async function loadAiSettings() {
+  const data = await request("/api/me/ai-settings");
+  state.aiSettings = data?.settings || null;
+}
+
+async function loadMistakes() {
+  const bookKey = ui.mistakeBookFilter.value || "all";
+  const sort = ui.mistakeSortFilter.value || "score";
+  const data = await request(`/api/mistakes?bookKey=${encodeURIComponent(bookKey)}&sort=${encodeURIComponent(sort)}&limit=60`);
+  state.mistakes = Array.isArray(data.items) ? data.items : [];
+}
+
+function renderUser() {
+  if (!state.user) return;
+  ui.userName.textContent = state.user.displayName || state.user.username;
+  ui.userAvatar.src = state.user.avatarData || DEFAULT_AVATAR_DATA;
+  if (ui.profileAvatarPreview) {
+    ui.profileAvatarPreview.src = state.user.avatarData || DEFAULT_AVATAR_DATA;
+  }
+  if (ui.profileDisplayNameInput && ui.profileModal && !ui.profileModal.classList.contains("hidden")) {
+    ui.profileDisplayNameInput.value = state.user.displayName || state.user.username || "";
+  }
+  renderProfileSummary();
+}
+
+function renderProfileSummary() {
+  if (!state.user) return;
+  if (ui.profileUsername) ui.profileUsername.textContent = state.user.username || "-";
+  if (ui.profileCreatedAt) {
+    const createdAt = state.user.createdAt ? String(state.user.createdAt).slice(0, 10) : "";
+    ui.profileCreatedAt.textContent = createdAt ? formatDateText(createdAt) : "-";
+  }
+  if (ui.profileBookName) {
+    const currentBook = state.books.find((book) => book.bookKey === state.selectedBookKey);
+    ui.profileBookName.textContent = currentBook?.name || "-";
+  }
+  if (ui.profileTodayMinutes) {
+    ui.profileTodayMinutes.textContent = formatTimeText(state.summary?.todaySeconds || 0);
+  }
+  if (ui.profileWeekMinutes) {
+    const week = Array.isArray(state.summary?.week) ? state.summary.week : [];
+    const weekTotal = week.reduce((sum, day) => sum + Number(day.seconds || 0), 0);
+    ui.profileWeekMinutes.textContent = formatTimeText(weekTotal);
+  }
+  if (ui.profileMasteredDue) {
+    const mastered = Number(state.progress?.masteredCount || 0);
+    const due = Number(state.progress?.dueCount || 0);
+    ui.profileMasteredDue.textContent = `${mastered} / ${due}`;
+  }
+  if (ui.profileAiStatus) {
+    const enabled = Boolean(state.aiSettings?.enabled);
+    const hasApiKey = Boolean(state.aiSettings?.hasApiKey);
+    ui.profileAiStatus.textContent = enabled && hasApiKey ? "已启用" : "未启用";
+  }
+}
+
+function fillAiSettingsForm() {
+  const settings = state.aiSettings || {};
+  if (ui.profileApiEnabled) ui.profileApiEnabled.checked = Boolean(settings.enabled);
+  if (ui.profileApiBaseUrlInput) ui.profileApiBaseUrlInput.value = String(settings.baseUrl || "");
+  if (ui.profileApiModelInput) ui.profileApiModelInput.value = String(settings.model || "gpt-4.1-mini");
+  if (ui.profileApiKeyInput) ui.profileApiKeyInput.value = "";
+  if (ui.profileApiSystemPromptInput) {
+    ui.profileApiSystemPromptInput.value = String(
+      settings.systemPrompt || "你是英语记忆教练。请用简洁中文输出，先给一个形象类比，再给一句记忆口诀，避免冗长解释。"
+    );
+  }
+  syncAiFormEnabled();
+}
+
+function syncAiFormEnabled() {
+  const enabled = Boolean(ui.profileApiEnabled?.checked);
+  const targets = [
+    ui.profileApiBaseUrlInput,
+    ui.profileApiModelInput,
+    ui.profileApiKeyInput,
+    ui.profileApiSystemPromptInput
+  ];
+  targets.forEach((el) => {
+    if (el) el.disabled = !enabled;
+  });
+}
+
+function readAiSettingsFromForm() {
+  const enabled = Boolean(ui.profileApiEnabled?.checked);
+  const baseUrl = String(ui.profileApiBaseUrlInput?.value || "").trim();
+  const model = String(ui.profileApiModelInput?.value || "").trim();
+  const apiKeyInput = String(ui.profileApiKeyInput?.value || "").trim();
+  const currentHasKey = Boolean(state.aiSettings?.hasApiKey);
+  const apiKey = apiKeyInput || (currentHasKey ? "__KEEP__" : "");
+  const systemPrompt = String(ui.profileApiSystemPromptInput?.value || "").trim();
+  return { enabled, baseUrl, model, apiKey, systemPrompt };
+}
+
+function validateAiSettingsPayload(payload) {
+  if (!payload.enabled) return null;
+  if (!payload.baseUrl || !/^https?:\/\//i.test(payload.baseUrl)) {
+    return "启用自定义 API 时，地址必须以 http:// 或 https:// 开头。";
+  }
+  if (!payload.model) return "启用自定义 API 时必须填写模型名称。";
+  if (!payload.apiKey || payload.apiKey === "__KEEP__" && !state.aiSettings?.hasApiKey) {
+    return "启用自定义 API 时必须填写 API Key。";
+  }
+  return null;
+}
+
+function openProfileModal() {
+  if (!state.user || !ui.profileModal) return;
+  document.body.classList.add("modal-open");
+  state.profileDraftAvatarData = state.user.avatarData || "";
+  if (ui.profileDisplayNameInput) {
+    ui.profileDisplayNameInput.value = state.user.displayName || state.user.username || "";
+  }
+  if (ui.profileAvatarPreview) {
+    ui.profileAvatarPreview.src = state.user.avatarData || DEFAULT_AVATAR_DATA;
+    ui.profileAvatarPreview.dataset.image = state.user.avatarData || "";
+  }
+  fillAiSettingsForm();
+  if (ui.profileAvatarInput) ui.profileAvatarInput.value = "";
+  setProfileMessage("");
+  renderProfileSummary();
+  ui.profileModal.classList.remove("hidden");
+  ui.profileModal.setAttribute("aria-hidden", "false");
+}
+
+function closeProfileModal() {
+  if (!ui.profileModal) return;
+  ui.profileModal.classList.add("hidden");
+  ui.profileModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+  if (ui.profileAvatarInput) ui.profileAvatarInput.value = "";
+  setProfileMessage("");
+}
+
+async function onProfileAvatarChange() {
+  const file = ui.profileAvatarInput?.files?.[0];
+  if (!file) return;
+  try {
+    const result = await compressAvatarToDataUrl(file);
+    state.profileDraftAvatarData = result;
+    if (ui.profileAvatarPreview) {
+      ui.profileAvatarPreview.src = result || DEFAULT_AVATAR_DATA;
+      ui.profileAvatarPreview.dataset.image = result;
+    }
+    if (result.length > 2000000) {
+      setProfileMessage("头像依然过大，请换一张更小的图片。");
+    } else {
+      setProfileMessage("");
+    }
+  } catch {
+    setProfileMessage("头像处理失败，请更换图片后重试。");
+  }
+}
+
+async function onProfileSave() {
+  if (!state.user) return;
+  const displayName = String(ui.profileDisplayNameInput?.value || "").trim();
+  if (!displayName || displayName.length > 32) {
+    setProfileMessage("显示名不合法：不能为空且不超过 32 字符。");
+    return;
+  }
+
+  const avatarData = String(state.profileDraftAvatarData || state.user.avatarData || "");
+  if (avatarData.length > 2000000) {
+    setProfileMessage("头像过大，请换一张更小的图片。");
+    return;
+  }
+
+  const aiPayload = readAiSettingsFromForm();
+  const aiError = validateAiSettingsPayload(aiPayload);
+  if (aiError) {
+    setProfileMessage(aiError);
+    return;
+  }
+
+  ui.profileSaveBtn.disabled = true;
+  setProfileMessage("正在保存...", false);
+  try {
+    const profileRes = await request("/api/me/profile", {
+      method: "PUT",
+      body: JSON.stringify({ displayName, avatarData })
+    });
+    const aiRes = await request("/api/me/ai-settings", {
+      method: "PUT",
+      body: JSON.stringify(aiPayload)
+    });
+    state.user = profileRes.user;
+    state.aiSettings = aiRes?.settings || state.aiSettings;
+    renderUser();
+    renderProfileSummary();
+    if (ui.profileApiKeyInput) ui.profileApiKeyInput.value = "";
+    setProfileMessage("保存成功。", false);
+  } catch (error) {
+    const reason = toReadableError(error);
+    setProfileMessage(`保存失败：${reason}`);
+  } finally {
+    ui.profileSaveBtn.disabled = false;
+  }
+}
+async function refreshHomeData() {
+  await Promise.all([loadSummary(), loadProgress(), loadMistakes()]);
+  renderSummary();
+  renderProgress();
+  renderMistakes();
+}
+
+async function bootstrapAfterLogin() {
+  const me = await request("/api/me");
+  state.user = me.user;
+  renderUser();
+  await Promise.all([loadBooks(), loadAiSettings()]);
+  renderBooks();
+  await refreshHomeData();
+  showScreen("home");
+}
+
+function startStudyTicker() {
+  if (state.studyTicking) return;
+  state.studyTicking = true;
+  state.studyTimerStart = Date.now();
+  state.studyReportedSeconds = 0;
+  state.studyIntervalId = setInterval(() => {
+    flushStudySeconds();
+  }, 30000);
+}
+
+function stopStudyTicker() {
+  if (!state.studyTicking) return;
+  const pending = Math.max(0, Math.floor((Date.now() - state.studyTimerStart) / 1000) - state.studyReportedSeconds);
+  state.studyTicking = false;
+  if (state.studyIntervalId) {
+    clearInterval(state.studyIntervalId);
+    state.studyIntervalId = null;
+  }
+  state.studyTimerStart = 0;
+  state.studyReportedSeconds = 0;
+  if (pending > 0 && state.token) {
+    request("/api/stats/study", { method: "POST", body: JSON.stringify({ seconds: pending }) }).catch(() => {});
+  }
+}
+
+async function flushStudySeconds() {
+  if (!state.studyTicking || !state.token) return;
+  const elapsed = Math.floor((Date.now() - state.studyTimerStart) / 1000);
+  const pending = Math.max(0, elapsed - state.studyReportedSeconds);
+  if (!pending) return;
+  await request("/api/stats/study", { method: "POST", body: JSON.stringify({ seconds: pending }) });
+  state.studyReportedSeconds += pending;
 }
 
 function calcWpm() {
-  const mins = Math.max((Date.now() - state.roundStart) / 60000, 1 / 60000);
+  const mins = Math.max((Date.now() - state.roundStartMs) / 60000, 1 / 60000);
   return Math.round((state.roundCorrectKeys / 5) / mins);
 }
 
@@ -392,337 +800,466 @@ function calcAccuracy() {
   return Math.round((state.roundCorrectKeys / total) * 100);
 }
 
-function pickNextWord() {
-  if (!state.queue.length) return null;
-  const maxWeight = Math.max(...state.queue.map((w) => w.weight));
-  const candidates = state.queue.filter((w) => w.weight === maxWeight);
-  return candidates[Math.floor(Math.random() * candidates.length)];
+function renderLiveStats() {
+  ui.progress.textContent = `${state.completedWords} / ${state.pool.length}`;
+  ui.liveWpm.textContent = `WPM ${calcWpm()}`;
+  ui.liveAcc.textContent = `Accuracy ${calcAccuracy()}%`;
 }
 
-function removeWordFromQueue(wordId) {
-  state.queue = state.queue.filter((w) => w.id !== wordId);
-}
-
-function maskSlots(word, typedCount, flashError) {
+function maskSlots(word, typedCount, isError) {
   ui.wordDisplay.innerHTML = "";
   for (let i = 0; i < word.length; i += 1) {
     const span = document.createElement("span");
     span.className = "slot";
-
     if (i < typedCount) {
       span.textContent = word[i];
       span.classList.add("typed");
     } else {
       span.textContent = "_";
       if (i === typedCount) span.classList.add("current");
-      if (i === typedCount && flashError) span.classList.add("error");
+      if (i === typedCount && isError) span.classList.add("error");
     }
-
     ui.wordDisplay.appendChild(span);
   }
 }
 
 function renderCurrentWord() {
   if (!state.currentWord) return;
-  ui.phonetic.textContent = state.currentWord.phonetic;
-  ui.meaning.textContent = state.currentWord.meaning;
-  maskSlots(state.currentWord.word, state.charIndex, state.flashError);
+  ui.phonetic.textContent = state.currentWord.phonetic || "";
+  ui.meaning.textContent = state.currentWord.meaning || "";
+  maskSlots(state.currentWord.word, state.charIndex, false);
 }
 
-function renderLiveStats() {
-  const total = state.pool.length;
-  ui.progress.textContent = `${state.completedWords} / ${total}`;
-  ui.liveWpm.textContent = `WPM ${calcWpm()}`;
-  ui.liveAcc.textContent = `Accuracy ${calcAccuracy()}%`;
+function clearInsightPanel() {
+  state.insightWord = null;
+  ui.insightWord.textContent = "-";
+  ui.insightPhonetic.textContent = "发音: -";
+  ui.insightMeaning.textContent = "释义: -";
+  ui.insightUsage.textContent = "用法: -";
+  ui.insightExample.textContent = "例句: -";
+  ui.insightMnemonic.textContent = "AI 比喻: 点击“我不会”后自动生成";
+  ui.insightSpeakBtn.disabled = true;
 }
 
-function openResult(title, text, nextLabel) {
+async function createMnemonic(wordObj) {
+  const reqId = state.insightReqId + 1;
+  state.insightReqId = reqId;
+  ui.insightMnemonic.textContent = "AI 比喻: 生成中...";
+  try {
+    const data = await request("/api/ai/mnemonic", {
+      method: "POST",
+      body: JSON.stringify({
+        word: wordObj.word,
+        meaning: wordObj.meaning,
+        example: wordObj.example
+      })
+    });
+    if (reqId !== state.insightReqId) return;
+    const sourceTag = data?.from === "user_api"
+      ? "（自定义API）"
+      : data?.from === "server_api"
+        ? "（系统API）"
+        : "";
+    ui.insightMnemonic.textContent = `AI 比喻${sourceTag}: ${data.mnemonic || "暂无"}`;
+  } catch {
+    if (reqId !== state.insightReqId) return;
+    ui.insightMnemonic.textContent = "AI 比喻: 生成失败，请先结合释义与例句记忆。";
+  }
+}
+
+function showInsight(wordObj) {
+  state.insightWord = wordObj;
+  ui.insightWord.textContent = wordObj.word || "-";
+  ui.insightPhonetic.textContent = `发音: ${wordObj.phonetic || "-"}`;
+  ui.insightMeaning.textContent = `释义: ${wordObj.meaning || "-"}`;
+  ui.insightUsage.textContent = `用法: ${wordObj.usage || "暂无"}`;
+  ui.insightExample.textContent = `例句: ${wordObj.example || "暂无"}`;
+  ui.insightSpeakBtn.disabled = false;
+  createMnemonic(wordObj);
+}
+
+function createSessionWord(word) {
+  return {
+    ...word,
+    weight: 0,
+    attempts: 0,
+    cooldown: 0
+  };
+}
+
+function pickNextWord() {
+  if (!state.queue.length) return null;
+  state.queue.forEach((word) => {
+    if (word.cooldown > 0) word.cooldown -= 1;
+  });
+  const ready = state.queue.filter((word) => word.cooldown <= 0);
+  const candidates = ready.length ? ready : state.queue;
+  const maxWeight = Math.max(...candidates.map((word) => Number(word.weight || 0)));
+  const heavy = candidates.filter((word) => Number(word.weight || 0) === maxWeight);
+  return heavy[Math.floor(Math.random() * heavy.length)];
+}
+
+function removeFromQueue(wordId) {
+  state.queue = state.queue.filter((word) => Number(word.id) !== Number(wordId));
+}
+
+function openResult(title, text) {
   state.gameFinished = true;
+  stopStudyTicker();
   ui.resultTitle.textContent = title;
   ui.resultText.textContent = text;
-  ui.nextActionBtn.textContent = nextLabel;
   ui.resultPanel.classList.add("show");
   ui.resultPanel.setAttribute("aria-hidden", "false");
 }
 
 function closeResult() {
-  state.gameFinished = false;
   ui.resultPanel.classList.remove("show");
   ui.resultPanel.setAttribute("aria-hidden", "true");
+  state.gameFinished = false;
 }
 
-function showDetailPanel(wordObj) {
-  const extra = getWordExtra(wordObj);
-
-  state.showingDetail = true;
-  ui.detailWord.textContent = wordObj.word;
-  ui.detailPhonetic.textContent = `发音: ${wordObj.phonetic}`;
-  ui.detailMeaning.textContent = `意思: ${wordObj.meaning}`;
-  ui.detailUsage.textContent = `用法: ${extra.usage}`;
-  ui.detailExample.textContent = `考试例句: ${extra.example}`;
-
-  ui.detailPanel.classList.add("show");
-  ui.detailPanel.setAttribute("aria-hidden", "false");
-  updateSpeechButton();
-  window.setTimeout(() => {
-    if (state.showingDetail && state.currentWord?.id === wordObj.id) {
-      speakWord(wordObj.word, extra.example);
-    }
-  }, 120);
+async function pushWordResult(wordObj, { correct, skipped, wrongCount, typedCount }) {
+  await request("/api/study/word-result", {
+    method: "POST",
+    body: JSON.stringify({
+      bookKey: state.selectedBookKey,
+      wordId: wordObj.id,
+      correct,
+      skipped,
+      wrongCount,
+      typedCount
+    })
+  });
 }
 
-function hideDetailPanel() {
-  state.showingDetail = false;
-  stopSpeech();
-  ui.detailPanel.classList.remove("show");
-  ui.detailPanel.setAttribute("aria-hidden", "true");
-}
-
-function markMistake(wordId) {
-  const current = Number(state.profile.mistakes[wordId] || 0);
-  state.profile.mistakes[wordId] = current + 1;
-}
-
-function relieveMistake(wordId) {
-  const current = Number(state.profile.mistakes[wordId] || 0);
-  if (current <= 1) {
-    delete state.profile.mistakes[wordId];
-  } else {
-    state.profile.mistakes[wordId] = current - 1;
-  }
-}
-
-function shakeGameCard() {
-  ui.typingCard.classList.remove("shake");
-  void ui.typingCard.offsetWidth;
-  ui.typingCard.classList.add("shake");
-}
-
-function nextWordOrFinish() {
+async function nextWordOrFinish() {
   state.currentWord = pickNextWord();
-
   if (!state.currentWord) {
-    const summary = `WPM ${calcWpm()} · Accuracy ${calcAccuracy()}% · 跳过 ${state.skippedWords} 词`;
-    if (state.mode === "level") {
-      state.profile.completedLevels += 1;
-      state.profile.leaves += 8;
-      saveProfile();
-      playLevelUpSound();
-      openResult("本关完成", `${summary}。小树长出新叶子。`, "下一关");
-    } else {
-      saveProfile();
-      openResult("复习完成", `${summary}。错题本已更新。`, "返回首页");
-    }
+    const text = `WPM ${calcWpm()} · Accuracy ${calcAccuracy()}% · 跳过 ${state.skippedWords} 词`;
+    openResult("本次学习完成", text);
+    await flushStudySeconds().catch(() => {});
+    await refreshHomeData().catch(() => {});
     return;
   }
-
   state.charIndex = 0;
-  state.currentWordErrors = 0;
-  state.wordStart = Date.now();
-  state.flashError = false;
+  state.currentWrong = 0;
+  state.currentMissed = false;
+  state.wordStartMs = Date.now();
   renderCurrentWord();
   renderLiveStats();
 }
 
-function startSession(mode, wordPool) {
-  stopSpeech();
-  state.mode = mode;
-  state.pool = wordPool.map((w) => ({ ...w }));
-  state.queue = state.pool.map((w) => ({ ...w }));
-  state.completedWords = 0;
-  state.skippedWords = 0;
-  state.roundCorrectKeys = 0;
-  state.roundWrongKeys = 0;
-  state.roundStart = Date.now();
-  state.gameFinished = false;
-  state.showingDetail = false;
-  closeResult();
-  hideDetailPanel();
-
-  if (mode === "level") {
-    ui.modeBadge.textContent = `闯关模式 · 第 ${state.profile.completedLevels + 1} 关`;
-  } else {
-    ui.modeBadge.textContent = "错题复习";
-  }
-
-  switchScreen("game");
-  nextWordOrFinish();
-}
-
-function startNextLevel() {
-  if (state.profile.completedLevels >= TOTAL_LEVELS) return;
-  const start = state.profile.completedLevels * LEVEL_SIZE;
-  const pool = words.slice(start, start + LEVEL_SIZE);
-  startSession("level", pool);
-}
-
-function startReview() {
-  const ids = Object.keys(state.profile.mistakes);
-  const pool = ids.map((id) => wordsById.get(id)).filter(Boolean);
-  if (!pool.length) return;
-  startSession("review", pool);
-}
-
-function handleBackspace() {
-  if (state.charIndex > 0) {
-    state.charIndex -= 1;
-    renderCurrentWord();
-  }
-}
-
-function finishCurrentWord(options = {}) {
-  const { skipped = false } = options;
-  const solvedWord = state.currentWord;
-  const spentSec = (Date.now() - state.wordStart) / 1000;
-
-  solvedWord.weight += (state.currentWordErrors * 2) + (spentSec > 5 ? 1 : 0);
+async function completeCurrentWord({ skipped = false }) {
+  if (!state.currentWord || state.isAdvancing) return;
+  state.isAdvancing = true;
+  const wordObj = state.currentWord;
+  const clean = !skipped && state.currentWrong === 0;
+  const typedCount = wordObj.word.length;
+  const wrongCount = state.currentWrong;
+  wordObj.attempts += 1;
+  wordObj.cooldown = REPEAT_COOLDOWN_TURNS;
 
   if (skipped) {
     state.skippedWords += 1;
-  }
-
-  if (state.mode === "review" && state.currentWordErrors === 0 && !skipped) {
-    relieveMistake(solvedWord.id);
-  }
-
-  removeWordFromQueue(solvedWord.id);
-  state.completedWords += 1;
-
-  if (skipped) {
-    nextWordOrFinish();
+    wordObj.weight = Math.min(MAX_WORD_WEIGHT, Number(wordObj.weight || 0) + SKIP_WEIGHT_PENALTY + wrongCount);
+  } else if (clean) {
+    wordObj.weight = Math.max(0, Number(wordObj.weight || 0) - 1);
+    removeFromQueue(wordObj.id);
+    state.completedWords += 1;
   } else {
-    showDetailPanel(solvedWord);
+    wordObj.weight = Math.min(MAX_WORD_WEIGHT, Number(wordObj.weight || 0) + wrongCount);
   }
+
+  try {
+    await pushWordResult(wordObj, {
+      correct: !skipped,
+      skipped,
+      wrongCount,
+      typedCount
+    }).catch(() => {});
+
+    await nextWordOrFinish();
+  } finally {
+    state.isAdvancing = false;
+  }
+}
+
+function startSession(mode, words) {
+  closeResult();
+  clearInsightPanel();
+  state.sessionMode = mode;
+  state.pool = words.map(createSessionWord);
+  state.queue = [...state.pool];
+  state.currentWord = null;
+  state.roundCorrectKeys = 0;
+  state.roundWrongKeys = 0;
+  state.roundStartMs = Date.now();
+  state.completedWords = 0;
+  state.skippedWords = 0;
+  state.gameFinished = false;
+  state.isAdvancing = false;
+  ui.modeBadge.textContent = mode;
+
+  startStudyTicker();
+  showScreen("game");
+  nextWordOrFinish();
+}
+
+async function startSmartSession() {
+  const data = await request(`/api/books/${encodeURIComponent(state.selectedBookKey)}/plan`);
+  const words = Array.isArray(data.words) ? data.words : [];
+  if (!words.length) {
+    alert("当前词书没有可学习单词。");
+    return;
+  }
+  const adaptiveSize = Number(data.adaptiveSize || words.length || 0);
+  const mode = adaptiveSize > 0 ? `智能学习 · ${adaptiveSize}词` : "智能学习";
+  startSession(mode, words);
+}
+
+async function startHardestSession() {
+  const data = await request(`/api/study/hardest?bookKey=${encodeURIComponent(state.selectedBookKey)}&limit=20`);
+  const words = Array.isArray(data.words) ? data.words : [];
+  if (!words.length) {
+    alert("当前还没有可用错题。");
+    return;
+  }
+  startSession("最难20词", words);
 }
 
 function handleSkipWord() {
-  if (!state.currentWord || state.gameFinished || state.showingDetail) return;
-  markMistake(state.currentWord.id);
+  if (!state.currentWord || state.gameFinished || state.isAdvancing) return;
   state.roundWrongKeys += 1;
-  state.currentWordErrors += 1;
-  playWrongSound();
-  finishCurrentWord({ skipped: true });
+  state.currentWrong += 1;
+  playTone(170, 0.1, "sawtooth", 0.05);
+  showInsight(state.currentWord);
+  completeCurrentWord({ skipped: true });
   renderLiveStats();
 }
 
-function onKeyDown(event) {
+function handleKeyDown(event) {
   if (!ui.gameScreen.classList.contains("active")) return;
-  if (!state.currentWord || state.gameFinished || state.showingDetail) return;
+  if (!state.currentWord || state.gameFinished || state.isAdvancing) return;
 
   if (event.key === "Backspace") {
     event.preventDefault();
-    handleBackspace();
+    if (state.charIndex > 0) {
+      state.charIndex -= 1;
+      renderCurrentWord();
+    }
     return;
   }
-
   if (!/^[a-zA-Z]$/.test(event.key)) return;
-  event.preventDefault();
 
+  event.preventDefault();
   const input = event.key.toLowerCase();
   const expected = state.currentWord.word[state.charIndex].toLowerCase();
-
   if (input === expected) {
     state.charIndex += 1;
     state.roundCorrectKeys += 1;
-    playCorrectSound();
+    playTone(760, 0.05, "triangle", 0.03);
     renderCurrentWord();
-
     if (state.charIndex >= state.currentWord.word.length) {
-      finishCurrentWord({ skipped: false });
+      completeCurrentWord({ skipped: false });
     }
   } else {
     state.roundWrongKeys += 1;
-    state.currentWordErrors += 1;
-    markMistake(state.currentWord.id);
-    playWrongSound();
-    state.flashError = true;
-    shakeGameCard();
-    renderCurrentWord();
-    setTimeout(() => {
-      state.flashError = false;
-      renderCurrentWord();
-    }, 130);
+    state.currentWrong += 1;
+    playTone(170, 0.08, "sawtooth", 0.05);
+    maskSlots(state.currentWord.word, state.charIndex, true);
+    setTimeout(() => renderCurrentWord(), 120);
   }
-
   renderLiveStats();
 }
 
+async function backToHome() {
+  if (speechSynthesisRef) speechSynthesisRef.cancel();
+  await flushStudySeconds().catch(() => {});
+  stopStudyTicker();
+  await refreshHomeData().catch(() => {});
+  showScreen("home");
+}
+
+async function onRegisterSubmit(event) {
+  event.preventDefault();
+  const usernameCheck = validateUsername(ui.registerUsername.value);
+  if (!usernameCheck.ok) {
+    setAuthMessage(`注册失败：${usernameCheck.message}`);
+    return;
+  }
+  const username = usernameCheck.username;
+  const displayName = ui.registerDisplayName.value.trim();
+  const password = ui.registerPassword.value;
+  const avatarData = ui.avatarPreview.dataset.image || "";
+  if (avatarData.length > 2000000) {
+    setAuthMessage("注册失败：头像过大，请换一张更小的图片。");
+    return;
+  }
+
+  try {
+    const data = await request("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ username, displayName, password, avatarData }),
+      headers: { Authorization: "" }
+    });
+    saveToken(data.token);
+    setAuthMessage("注册成功，正在进入首页...", false);
+    await bootstrapAfterLogin();
+  } catch (error) {
+    const reason = toReadableError(error);
+    setAuthMessage(`注册失败：${reason}`);
+  }
+}
+
+async function onLoginSubmit(event) {
+  event.preventDefault();
+  const usernameCheck = validateUsername(ui.loginUsername.value);
+  if (!usernameCheck.ok) {
+    setAuthMessage(`登录失败：${usernameCheck.message}`);
+    return;
+  }
+  const username = usernameCheck.username;
+  const password = ui.loginPassword.value;
+  try {
+    const data = await request("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+      headers: { Authorization: "" }
+    });
+    saveToken(data.token);
+    setAuthMessage("登录成功。", false);
+    await bootstrapAfterLogin();
+  } catch (error) {
+    const reason = toReadableError(error);
+    setAuthMessage(`登录失败：${reason}`);
+  }
+}
+
+function switchAuthTab(tab) {
+  const isLogin = tab === "login";
+  ui.loginForm.classList.toggle("hidden", !isLogin);
+  ui.registerForm.classList.toggle("hidden", isLogin);
+  ui.showLoginBtn.classList.toggle("active", isLogin);
+  ui.showRegisterBtn.classList.toggle("active", !isLogin);
+  setAuthMessage("");
+}
+
 function bindEvents() {
-  ui.startLevelBtn.addEventListener("click", () => {
-    ensureAudioContext();
-    startNextLevel();
+  ui.showLoginBtn.addEventListener("click", () => switchAuthTab("login"));
+  ui.showRegisterBtn.addEventListener("click", () => switchAuthTab("register"));
+  ui.loginForm.addEventListener("submit", onLoginSubmit);
+  ui.registerForm.addEventListener("submit", onRegisterSubmit);
+
+  ui.registerAvatar.addEventListener("change", () => {
+    const file = ui.registerAvatar.files?.[0];
+    if (!file) return;
+    compressAvatarToDataUrl(file)
+      .then((result) => {
+        ui.avatarPreview.src = result;
+        ui.avatarPreview.dataset.image = result;
+        if (result.length > 2000000) {
+          setAuthMessage("头像依然过大，请换一张更小的图片。");
+        } else {
+          setAuthMessage("");
+        }
+      })
+      .catch(() => {
+        setAuthMessage("头像处理失败，请更换图片后重试。");
+      });
   });
 
-  ui.startReviewBtn.addEventListener("click", () => {
-    ensureAudioContext();
-    startReview();
+  ui.logoutBtn.addEventListener("click", async () => {
+    await request("/api/auth/logout", { method: "POST", body: "{}" }).catch(() => {});
+    logoutLocal();
   });
 
-  ui.skipBtn.addEventListener("click", () => {
-    ensureAudioContext();
-    handleSkipWord();
+  ui.openProfileBtn.addEventListener("click", () => {
+    openProfileModal();
+  });
+  ui.closeProfileBtn.addEventListener("click", () => {
+    closeProfileModal();
+  });
+  ui.profileCancelBtn.addEventListener("click", () => {
+    closeProfileModal();
+  });
+  ui.profileBackdrop.addEventListener("click", () => {
+    closeProfileModal();
+  });
+  ui.profileAvatarInput.addEventListener("change", () => {
+    onProfileAvatarChange();
+  });
+  ui.profileApiEnabled.addEventListener("change", () => {
+    syncAiFormEnabled();
+  });
+  ui.profileSaveBtn.addEventListener("click", () => {
+    onProfileSave();
+  });
+
+  ui.bookSelect.addEventListener("change", async () => {
+    state.selectedBookKey = ui.bookSelect.value;
+    localStorage.setItem(BOOK_KEY_STORE, state.selectedBookKey);
+    await refreshHomeData().catch(() => {});
+  });
+
+  ui.checkinBtn.addEventListener("click", async () => {
+    await request("/api/stats/checkin", { method: "POST", body: "{}" }).catch(() => {});
+    await refreshHomeData().catch(() => {});
+  });
+
+  ui.startSmartBtn.addEventListener("click", () => {
+    startSmartSession().catch((error) => alert(`鍚姩澶辫触: ${error.message}`));
+  });
+  ui.startHardestBtn.addEventListener("click", () => {
+    startHardestSession().catch((error) => alert(`鍚姩澶辫触: ${error.message}`));
+  });
+
+  ui.mistakeBookFilter.addEventListener("change", () => {
+    loadMistakes().then(renderMistakes).catch(() => {});
+  });
+  ui.mistakeSortFilter.addEventListener("change", () => {
+    loadMistakes().then(renderMistakes).catch(() => {});
+  });
+  ui.refreshMistakesBtn.addEventListener("click", () => {
+    loadMistakes().then(renderMistakes).catch(() => {});
   });
 
   ui.backHomeBtn.addEventListener("click", () => {
-    stopSpeech();
-    saveProfile();
-    renderHome();
-    switchScreen("home");
+    backToHome();
+  });
+  ui.resultHomeBtn.addEventListener("click", () => {
+    backToHome();
+  });
+  ui.endSessionBtn.addEventListener("click", () => {
+    openResult("已结束本次学习", `WPM ${calcWpm()} · Accuracy ${calcAccuracy()}%`);
+    flushStudySeconds().catch(() => {});
+  });
+  ui.skipBtn.addEventListener("click", () => handleSkipWord());
+  ui.insightSpeakBtn.addEventListener("click", () => {
+    if (!state.insightWord) return;
+    speakWord(state.insightWord.word, state.insightWord.example || "");
   });
 
-  ui.toHomeBtn.addEventListener("click", () => {
-    stopSpeech();
-    saveProfile();
-    renderHome();
-    switchScreen("home");
-  });
-
-  ui.nextActionBtn.addEventListener("click", () => {
-    if (state.mode === "review") {
-      saveProfile();
-      renderHome();
-      switchScreen("home");
-      return;
+  window.addEventListener("keydown", handleKeyDown);
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && ui.profileModal && !ui.profileModal.classList.contains("hidden")) {
+      closeProfileModal();
     }
-
-    if (state.profile.completedLevels >= TOTAL_LEVELS) {
-      saveProfile();
-      renderHome();
-      switchScreen("home");
-      return;
-    }
-
-    startNextLevel();
   });
-
-  ui.detailNextBtn.addEventListener("click", () => {
-    if (!state.showingDetail) return;
-    hideDetailPanel();
-    nextWordOrFinish();
-  });
-
-  ui.detailSpeakBtn.addEventListener("click", () => {
-    const wordObj = state.currentWord;
-    if (!wordObj && !ui.detailWord.textContent) return;
-    const word = ui.detailWord.textContent || wordObj.word;
-    const example = wordObj ? getWordExtra(wordObj).example : "";
-    speakWord(word, example);
-  });
-
-  ui.toggleSoundBtn.addEventListener("click", () => {
-    state.soundEnabled = !state.soundEnabled;
-    ui.toggleSoundBtn.textContent = `音效: ${state.soundEnabled ? "开" : "关"}`;
-  });
-
-  window.addEventListener("keydown", onKeyDown);
 }
 
-function init() {
-  applyTimeTheme();
-  initSpeech();
+async function init() {
   bindEvents();
-  renderHome();
-  switchScreen("home");
+  initSpeech();
+  clearInsightPanel();
+  showScreen("auth");
+
+  if (!state.token) return;
+  try {
+    await bootstrapAfterLogin();
+  } catch {
+    logoutLocal();
+  }
 }
 
 init();
+

@@ -1,100 +1,286 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FlowType - 闯关背词</title>
+  <title>FlowType - 智能背词</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css?v=20260319c" />
 </head>
 <body>
-  <div class="bg-orb orb-1"></div>
-  <div class="bg-orb orb-2"></div>
+  <div class="page-noise"></div>
+  <div class="page-grid"></div>
 
   <main class="app-shell">
-    <section id="homeScreen" class="screen active">
-      <div class="glass home-card">
-        <h1>FlowType</h1>
-        <p class="sub">闯关背词，每通关一关，小树多一层叶子</p>
+    <section id="authScreen" class="screen active">
+      <div class="glass auth-wrap">
+        <section class="auth-intro">
+          <div class="brand-block">
+            <p class="eyebrow">Adaptive Vocabulary System</p>
+            <h1 class="brand-title">FLOWTYPE</h1>
+            <p class="brand-subtitle">把单词训练成可随时调用的长期记忆</p>
+          </div>
+          <div class="intro-points">
+            <article>
+              <h3>智能出题</h3>
+              <p>根据错题率与遗忘节奏动态复习，不再机械刷词。</p>
+            </article>
+            <article>
+              <h3>可视化进步</h3>
+              <p>从今日学习到 7 天趋势，持续看到输入与输出变化。</p>
+            </article>
+            <article>
+              <h3>闭环巩固</h3>
+              <p>不会词即时联动释义、发音、例句与 AI 记忆比喻。</p>
+            </article>
+          </div>
+          <p class="intro-footnote">FlowType keeps your memory in motion.</p>
+        </section>
+        <section class="auth-panel">
+          <div class="auth-tabs">
+            <button id="showLoginBtn" class="tab-btn active" type="button">登录</button>
+            <button id="showRegisterBtn" class="tab-btn" type="button">注册</button>
+          </div>
 
-        <div class="tree-wrap" aria-label="成长树">
-          <div class="tree-crown" id="treeLeaves"></div>
-          <div class="tree-trunk"></div>
-          <div class="tree-ground"></div>
-        </div>
+          <form id="loginForm" class="auth-form">
+            <label>用户名</label>
+            <input id="loginUsername" type="text" autocomplete="username" />
+            <label>密码</label>
+            <input id="loginPassword" type="password" autocomplete="current-password" />
+            <button type="submit">登录并开始学习</button>
+          </form>
 
-        <div class="home-stats">
-          <span id="levelInfo">关卡 0 / 0</span>
-          <span id="leafInfo">叶子 0</span>
-          <span id="mistakeInfo">错题 0</span>
-        </div>
+          <form id="registerForm" class="auth-form hidden">
+            <label>用户名（英文/数字/下划线）</label>
+            <input id="registerUsername" type="text" autocomplete="username" />
+            <label>显示名</label>
+            <input id="registerDisplayName" type="text" autocomplete="nickname" />
+            <label>密码（至少 6 位）</label>
+            <input id="registerPassword" type="password" autocomplete="new-password" />
+            <label>头像</label>
+            <input id="registerAvatar" type="file" accept="image/*" />
+            <div class="avatar-preview">
+              <img id="avatarPreview" alt="avatar preview" />
+            </div>
+            <button type="submit">注册并登录</button>
+          </form>
+          <p id="authMessage" class="auth-msg"></p>
+        </section>
+      </div>
+    </section>
 
-        <div class="home-actions">
-          <button id="startLevelBtn" type="button">开始下一关</button>
-          <button id="startReviewBtn" type="button">错题复习</button>
-          <button id="toggleSoundBtn" type="button">音效: 开</button>
-        </div>
+    <section id="homeScreen" class="screen">
+      <div class="home-layout">
+        <section class="glass home-main">
+          <header class="topbar">
+            <div class="user-chip">
+              <img id="userAvatar" alt="avatar" />
+              <div>
+                <p id="userName">-</p>
+                <span id="todayDate">--</span>
+              </div>
+            </div>
+            <div class="topbar-actions">
+              <button id="openProfileBtn" type="button" class="ghost-btn">个人信息</button>
+              <button id="logoutBtn" type="button" class="ghost-btn">退出登录</button>
+            </div>
+          </header>
 
-        <div class="mistake-box">
-          <p>错题本</p>
+          <p class="eyebrow">SMART DAILY</p>
+          <h2>今日学习仪表盘</h2>
+          <p id="todayQuote" class="quote">保持稳定输出，记忆自然会变强。</p>
+
+          <div class="control-row">
+            <label>词书</label>
+            <select id="bookSelect"></select>
+            <button id="startSmartBtn" type="button">开始智能学习</button>
+            <button id="startHardestBtn" type="button" class="warn-btn">最难 20 词</button>
+            <button id="checkinBtn" type="button" class="ghost-btn">今日打卡</button>
+          </div>
+
+          <div class="metrics-grid">
+            <article class="metric-card">
+              <span>今日时长</span>
+              <p id="todayDuration">0 分钟</p>
+            </article>
+            <article class="metric-card">
+              <span>7 天时长</span>
+              <p id="weekDuration">0 分钟</p>
+            </article>
+            <article class="metric-card">
+              <span>待复习</span>
+              <p id="dueCount">0</p>
+            </article>
+            <article class="metric-card">
+              <span>今日打卡</span>
+              <p id="checkinStatus">未打卡</p>
+            </article>
+          </div>
+
+          <div class="progress-grid">
+            <article class="progress-card"><span>新词</span><p id="newCount">0</p></article>
+            <article class="progress-card"><span>学习中</span><p id="learningCount">0</p></article>
+            <article class="progress-card"><span>已掌握</span><p id="masteredCount">0</p></article>
+            <article class="progress-card"><span>最近复习</span><p id="lastReviewAt">-</p></article>
+          </div>
+
+          <div class="trend-grid">
+            <article class="trend-card">
+              <p>7 天时长趋势</p>
+              <div id="trendMinutes" class="sparkline"></div>
+            </article>
+            <article class="trend-card">
+              <p>7 天正确率趋势</p>
+              <div id="trendAccuracy" class="sparkline"></div>
+            </article>
+            <article class="trend-card">
+              <p>7 天跳过率趋势</p>
+              <div id="trendSkipRate" class="sparkline"></div>
+            </article>
+          </div>
+        </section>
+
+        <aside class="glass home-side">
+          <div class="mistake-head">
+            <h3>错题本</h3>
+            <button id="refreshMistakesBtn" class="ghost-btn" type="button">刷新</button>
+          </div>
+          <div class="mistake-filters">
+            <label>词书</label>
+            <select id="mistakeBookFilter">
+              <option value="all">全部</option>
+            </select>
+            <label>排序</label>
+            <select id="mistakeSortFilter">
+              <option value="score">综合难度</option>
+              <option value="errors">错误次数</option>
+              <option value="recent">最近错误</option>
+            </select>
+          </div>
           <ul id="mistakeList"></ul>
-        </div>
+        </aside>
+      </div>
+
+      <div id="profileModal" class="profile-modal hidden" aria-hidden="true">
+        <div id="profileBackdrop" class="profile-backdrop"></div>
+        <section class="profile-card" role="dialog" aria-modal="true" aria-label="个人信息">
+          <header class="profile-head">
+            <h3>个人信息</h3>
+            <button id="closeProfileBtn" type="button" class="ghost-btn">关闭</button>
+          </header>
+          <div class="profile-layout">
+            <section class="profile-edit">
+              <div class="profile-avatar-wrap">
+                <img id="profileAvatarPreview" alt="profile avatar" />
+              </div>
+              <label for="profileDisplayNameInput">显示名</label>
+              <input id="profileDisplayNameInput" type="text" maxlength="32" autocomplete="nickname" />
+              <label for="profileAvatarInput">更换头像</label>
+              <input id="profileAvatarInput" type="file" accept="image/*" />
+              <label class="api-toggle-label" for="profileApiEnabled">
+                <input id="profileApiEnabled" type="checkbox" />
+                启用自定义 AI API
+              </label>
+              <label for="profileApiBaseUrlInput">API Base URL</label>
+              <input id="profileApiBaseUrlInput" type="url" placeholder="https://api.openai.com/v1" />
+              <label for="profileApiModelInput">模型</label>
+              <input id="profileApiModelInput" type="text" placeholder="gpt-4.1-mini" />
+              <label for="profileApiKeyInput">API Key（留空则保持不变）</label>
+              <input id="profileApiKeyInput" type="password" autocomplete="off" />
+              <label for="profileApiSystemPromptInput">系统提示词</label>
+              <textarea id="profileApiSystemPromptInput" rows="4"></textarea>
+              <div class="profile-actions">
+                <button id="profileSaveBtn" type="button">保存资料</button>
+                <button id="profileCancelBtn" type="button" class="ghost-btn">取消</button>
+              </div>
+              <p id="profileMessage" class="profile-msg"></p>
+            </section>
+            <section class="profile-meta">
+              <article class="profile-meta-card">
+                <span>用户名</span>
+                <p id="profileUsername">-</p>
+              </article>
+              <article class="profile-meta-card">
+                <span>注册时间</span>
+                <p id="profileCreatedAt">-</p>
+              </article>
+              <article class="profile-meta-card">
+                <span>当前词书</span>
+                <p id="profileBookName">-</p>
+              </article>
+              <article class="profile-meta-card">
+                <span>今日学习</span>
+                <p id="profileTodayMinutes">0 分钟</p>
+              </article>
+              <article class="profile-meta-card">
+                <span>7 天学习</span>
+                <p id="profileWeekMinutes">0 分钟</p>
+              </article>
+              <article class="profile-meta-card">
+                <span>掌握/待复习</span>
+                <p id="profileMasteredDue">0 / 0</p>
+              </article>
+              <article class="profile-meta-card">
+                <span>AI 配置状态</span>
+                <p id="profileAiStatus">未启用</p>
+              </article>
+            </section>
+          </div>
+        </section>
       </div>
     </section>
 
     <section id="gameScreen" class="screen">
-      <div class="glass game-card" id="typingCard">
-        <header class="game-header">
-          <button id="backHomeBtn" type="button" class="ghost-btn">返回首页</button>
-          <span id="modeBadge">闯关模式</span>
-        </header>
-
-        <div class="word-meta">
-          <p id="phonetic"></p>
-          <p id="meaning"></p>
-        </div>
-
-        <div id="wordDisplay" class="word-display"></div>
-        <p class="tip">提示：只展示长度，不直接展示单词拼写</p>
-
-        <div class="game-actions">
-          <button id="skipBtn" type="button" class="warn-btn">我不会，跳过并加入错题</button>
-        </div>
-
-        <footer class="status-row">
-          <span id="progress">0 / 0</span>
-          <span id="liveWpm">WPM 0</span>
-          <span id="liveAcc">Accuracy 100%</span>
-        </footer>
-
-        <section class="detail-panel" id="detailPanel" aria-hidden="true">
-          <h3>单词解析</h3>
-          <p class="detail-word-line">
-            <strong id="detailWord"></strong>
-            <button id="detailSpeakBtn" type="button" class="ghost-btn">发音 + 例句</button>
-          </p>
-          <p id="detailPhonetic"></p>
-          <p id="detailMeaning"></p>
-          <p id="detailUsage"></p>
-          <p id="detailExample"></p>
-          <button id="detailNextBtn" type="button">下一个单词</button>
-        </section>
-
-        <section class="result-panel" id="resultPanel" aria-hidden="true">
-          <h2 id="resultTitle">本关完成</h2>
-          <p id="resultText"></p>
-          <div class="result-actions">
-            <button id="nextActionBtn" type="button">下一步</button>
-            <button id="toHomeBtn" type="button" class="ghost-btn">回首页</button>
+      <div class="glass game-layout">
+        <aside class="game-side">
+          <div class="session-head">
+            <button id="backHomeBtn" class="ghost-btn" type="button">返回首页</button>
+            <span id="modeBadge">智能学习</span>
           </div>
+          <div class="session-stats">
+            <span id="progress">0 / 0</span>
+            <span id="liveWpm">WPM 0</span>
+            <span id="liveAcc">Accuracy 100%</span>
+          </div>
+          <section class="insight-panel">
+            <h3>不会词速记面板</h3>
+            <p class="insight-word-row">
+              <strong id="insightWord">-</strong>
+              <button id="insightSpeakBtn" class="ghost-btn" type="button">发音 + 例句</button>
+            </p>
+            <p id="insightPhonetic">发音: -</p>
+            <p id="insightMeaning">释义: -</p>
+            <p id="insightUsage">用法: -</p>
+            <p id="insightExample">例句: -</p>
+            <p id="insightMnemonic" class="insight-mnemonic">AI 比喻: 点击“我不会”后自动生成</p>
+          </section>
+        </aside>
+
+        <section class="play-main">
+          <div class="word-meta">
+            <p id="phonetic"></p>
+            <p id="meaning"></p>
+          </div>
+          <div class="word-stage">
+            <div id="wordDisplay" class="word-display"></div>
+            <p class="tip">只接受键盘输入，准确优先</p>
+          </div>
+          <div class="game-actions">
+            <button id="skipBtn" class="warn-btn" type="button">我不会，加入错题并跳过</button>
+            <button id="endSessionBtn" class="ghost-btn" type="button">结束本次学习</button>
+          </div>
+          <section id="resultPanel" class="result-panel" aria-hidden="true">
+            <h3 id="resultTitle">本次完成</h3>
+            <p id="resultText"></p>
+            <button id="resultHomeBtn" type="button">回到首页</button>
+          </section>
         </section>
       </div>
     </section>
   </main>
 
-  <script src="./words.js"></script>
-  <script src="./app.js"></script>
+  <script src="./app.js?v=20260319c"></script>
 </body>
 </html>

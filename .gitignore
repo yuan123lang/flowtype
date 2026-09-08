@@ -1,0 +1,15 @@
+node_modules/
+output/
+
+# Runtime database artifacts
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Optional generated vocabulary sources
+english-vocabulary-master/json_original/
+english-vocabulary-master/*sql*/
+
+# Common local files
+.env
+*.log
